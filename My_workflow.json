@@ -1,0 +1,2105 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "\nvar index=0\nwhile($input.all()[index].json['status']!=''){\n  index++\n}\nconst url = $input.all()[index].json['訂單'];\nconst fileId = url.match(/[?&]id=([^&]+)/)[1];\n\nreturn {\n  json: {\n    \"time\": $input.all()[index].json['時間戳記'],\n    \"url\": url,\n    \"id\": fileId,\n    \"mail\": $input.all()[index].json['電子郵件地址'],\n    \"name\": $input.all()[index].json['名字'],\n    \"row\":index\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        240
+      ],
+      "id": "2c0ce638-78aa-4d87-8f19-fbc439fc015e",
+      "name": "extracFileID"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -220,
+        240
+      ],
+      "id": "0efe5cbf-b2c6-42ec-82b8-b070e9660ef0",
+      "name": "getFiileFromDrive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "oawWWN96sEsY8v9R",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## step1. Get data from google sheet\n当使用者上传资料到google forms, 档案的连结会存到google sheet中\n把url取出接者取出id,再叫drive给出档案",
+        "height": 400,
+        "width": 1180
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1120,
+        120
+      ],
+      "typeVersion": 1,
+      "id": "854924ea-73dc-49d0-affe-67d98e12a769",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## step2 圖片文字辨識\n把圖片轉成b64後call google vision api",
+        "height": 420,
+        "width": 1000,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        80,
+        100
+      ],
+      "typeVersion": 1,
+      "id": "96a7127a-3e1c-4c6d-b1b2-ff14f7431af1",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## step3 Fuzzy maching\n将取得得文字进行fuzzy matching\n把商品列表找出來，接者用seperate name把品名的各種可能都列出來(增加fuzzymatching的容錯律）\nfuzzy matching是把字拆成最小部份(https://www.npmjs.com/package/hanzi)\n然後用別人寫好的程式跑",
+        "height": 440,
+        "width": 1180,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1120,
+        560
+      ],
+      "typeVersion": 1,
+      "id": "763b6ca2-1075-4d8c-9d2c-91e4f429c52d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}\n\n幫我整理以上內容，將每個訂單拆分成'名稱','數量','單位','單價'和'小計'共五個小部份，每個小部份內部不要有空格，每個小部份之間以空格分開，若找不到該部份則以'Null'代替，每個訂單之間以換行號分開。例如\n\"芒果3顆11 33豬 腳五斤30\"會變成\"芒果 3 顆 11 33\\n豬腳 五 斤 30 Null\"\n名稱是食物的名稱，像是'西瓜'，'臘肉'\n數量只由0,1,...,9組成",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "你是負責資料整粒的專家，專門將各類資料整理"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        1440,
+        240
+      ],
+      "id": "4fa3a2f5-b726-470a-bc24-28e3f323cd82",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "model": "deepseek/deepseek-chat:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        480
+      ],
+      "id": "7dcdb990-8922-4183-8dda-29529bc81308",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "PkqmpJCuPGQncNU3",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "numberOfItems": -1,
+          "separator": "=\\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserItemList",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        500
+      ],
+      "id": "9464afaf-426f-422a-bfba-127d27197ef5",
+      "name": "Item List Output Parser"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "python",
+        "pythonCode": "text=_input.item.json.text\ntext_sperate=text.split(' ')\nreturn {\n  \"name\":text_sperate[0],\n  \"quantity\":text_sperate[1],\n  \"unit\":text_sperate[2],\n  \"unit_price\":text_sperate[3],\n  \"subtotal\":text_sperate[3]}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1080,
+        740
+      ],
+      "id": "7579872e-cc12-46ac-bdff-617e2e2f832e",
+      "name": "toJson"
+    },
+    {
+      "parameters": {
+        "jsCode": "//比對方式是把漢字拆解然後當成一般的中文字比對\nconst hanzi = require(\"hanzi\");\nconst Fuse = require(\"fuse.js\");\n\nfunction decomposedString(str){\n    ret='';\n    for (let i = 0; i < str.length; i++) {\n        if (hanzi.ifComponentExists(str[i])) {\n            hanziDecompose=hanzi.decompose(str[i],3);\n            hanziDecompose['components'].forEach((element) => ret+=element);\n            \n        } else {\n            ret+=str[i];\n        }\n    }\n    //console.log('ret: ', ret);\n    final_ret=ret.split('').join(' ');\n    //console.log(final_ret);\n    return final_ret;\n}\n\nfunction main(){\n  hanzi.start();\n  const raw_data=$(\"seperate name\").all()\n  var data = raw_data.map(item => item.json);\n  \n  data.forEach((element) => {element['decomposed']=decomposedString(element['品名']);});\n  const options = {\n      keys: ['decomposed'], \n      threshold: 1, \n      shouldSort: true, \n      location: 0, \n      distance: 100, \n      tokenize: true,\n      includeScore:true, \n      \n  };\n  var finalret={}\n  var status='complete'\n  var items=[]\n  const raw_search_data = $(\"toJson\").all()\n  var search_data=raw_search_data.map(item => item.json);\n  const fuse = new Fuse(data, options);\n  for (let i = 0; i < search_data.length; i++) {\n      let origName=search_data[i]['name'];\n      const result = fuse.search(decomposedString(origName));\n      let ret={};\n      ret['product_id']=result[0]['item']['品號']\n      ret['match_name']=result[0]['item']['origname'];\n      ret['original_input']=search_data[i]['name'];\n      ret['quantity']=search_data[i]['quantity'];\n      ret['match_score']=result[0]['score'];\n    \n      ret['item_id']=i;\n    \n      if(ret['match_score']>0.6 || ret['quantity']=='Null')//需要人工比對的情況\n        status='pending'\n      items.push(ret);\n  }\n  finalret['status']=status\n  finalret['customer_name']=$('extracFileID').first().json.name\n  finalret['customer_mail']=$('extracFileID').first().json.mail\n  finalret['order_date']=$('extracFileID').first().json.time\n  finalret['items']=items\n  return finalret;\n}\n\nreturn main();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -580,
+        740
+      ],
+      "id": "a2b5b979-2bf6-412c-abf6-4172321e8428",
+      "name": "fuzzyMatching",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "//對於有出現/或\\的品名都都額外去存\n//例如 葱/青蔥 會多存 蔥 青蔥 和 蔥青蔥三種\nfunction splitOutsideParentheses(s) {\n  const result = [];\n  let current = '';\n  let depth = 0;\n  for (const char of s) {\n    if (char === '(') {\n      depth++;\n      current += char;\n    } else if (char === ')') {\n      depth--;\n      current += char;\n    } else if ((char === '/' || char === '\\\\') && depth === 0) {\n      if (current !== '') {\n        result.push(current);\n        current = '';\n      }\n    } else {\n      current += char;\n    }\n  }\n  if (current !== '') {\n    result.push(current);\n  }\n  return result;\n}\n\nvar datas = $(\"getOrderInformation\").all().map(item => item.json);\nconst newItems = [];\n\nfor (const data of datas) {\n  const originName = data[\"品名\"];\n  const names = splitOutsideParentheses(originName);\n  newItems.push({\n    json: {\n      品號:   data[\"品號\"],\n      品名:   originName,\n      單位:   data[\"單位\"],\n      幣別:   data[\"幣別\"],\n      origname: originName,\n    }\n  });\n  if (names.length === 1) {\n    \n  } else {\n    normalname=''\n    for (const name of names) {\n      newItems.push({\n        json: {\n          品號:   data[\"品號\"],\n          品名:   name,\n          單位:   data[\"單位\"],\n          幣別:   data[\"幣別\"],\n          origname: originName,\n        }\n      });\n      normalname+=name\n    }\n    newItems.push({\n      json: {\n        品號:   data[\"品號\"],\n        品名:   normalname,\n        單位:   data[\"單位\"],\n        幣別:   data[\"幣別\"],\n        origname: originName,\n      }\n    });\n  }\n}\n\nreturn newItems;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -760,
+        740
+      ],
+      "id": "7a7a3487-4f43-470a-9cae-02f5bc92604f",
+      "name": "seperate name"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q",
+          "mode": "list",
+          "cachedResultName": "訂單 (回覆)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1215184540,
+          "mode": "list",
+          "cachedResultName": "表單回應 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q/edit#gid=1215184540"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "pending",
+            "row_number": "=",
+            "時間戳記": "={{ $('fuzzyMatching').item.json.order_date }}"
+          },
+          "matchingColumns": [
+            "時間戳記"
+          ],
+          "schema": [
+            {
+              "id": "時間戳記",
+              "displayName": "時間戳記",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "電子郵件地址",
+              "displayName": "電子郵件地址",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "名字",
+              "displayName": "名字",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "訂單",
+              "displayName": "訂單",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        520,
+        1100
+      ],
+      "id": "ab1f3e17-f570-4b82-afbd-12dfaa8a0f9f",
+      "name": "updateStatus",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "a2tvn0xsKLduVjRO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## step4 檔案輸出\n若沒有問題直接把json檔存到雲端\n",
+        "height": 260,
+        "width": 740
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        80,
+        560
+      ],
+      "typeVersion": 1,
+      "id": "7ebe73c0-a888-4856-bc05-e481297897a0",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "174e0235-1762-4f72-921f-c5806610d2f7",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "complete",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -100,
+        640
+      ],
+      "id": "5169be61-495c-4367-8d8e-e4ff71df12e1",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "binaryPropertyName": "penndingorder.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        1100
+      ],
+      "id": "5cd5d307-ff8e-45f1-9e2e-42a42d0f3e78",
+      "name": "Convert to File2"
+    },
+    {
+      "parameters": {
+        "content": "## step4 回報錯誤\n先把比對結果暫存然後報錯",
+        "height": 260,
+        "width": 1280
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        80,
+        1020
+      ],
+      "typeVersion": 1,
+      "id": "5d637838-972e-416a-8e79-ef21fc89f2cb",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1aaouNFhHcrIaH2Yn26MM_C9eOPGauDeuFAUMLIYL6qA",
+          "mode": "list",
+          "cachedResultName": "產品清單",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aaouNFhHcrIaH2Yn26MM_C9eOPGauDeuFAUMLIYL6qA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1323375828,
+          "mode": "list",
+          "cachedResultName": "COPR222025033000000320250330000",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aaouNFhHcrIaH2Yn26MM_C9eOPGauDeuFAUMLIYL6qA/edit#gid=1323375828"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -920,
+        740
+      ],
+      "id": "70c93601-e947-40e9-b8a2-0e17b465b9a4",
+      "name": "getOrderInformation",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "a2tvn0xsKLduVjRO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "binaryPropertyName": "=data",
+        "options": {
+          "fileName": "={{ $json.customer_mail }}_order.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        640
+      ],
+      "id": "7a00db69-ce44-4f18-820c-c121c5b07a3b",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "penndingorder.json",
+        "name": "={{ $('If').item.json.customer_mail }}.json",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1ZdD99ktBa-t1_pHNr1Fxpqag1asKBdHZ",
+          "mode": "list",
+          "cachedResultName": "處理到一半的訂單",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1ZdD99ktBa-t1_pHNr1Fxpqag1asKBdHZ"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        340,
+        1100
+      ],
+      "id": "b47ebc78-3649-4dd4-ab60-fdbdb186ae51",
+      "name": "pendingOrderSubmmit",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "oawWWN96sEsY8v9R",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1c-mAfXpFmhYxh6BRb66cB_6gHecuzZMs",
+          "mode": "list",
+          "cachedResultName": "整理後的訂單",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1c-mAfXpFmhYxh6BRb66cB_6gHecuzZMs"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        340,
+        640
+      ],
+      "id": "21957349-18b6-43fe-9ff4-65b9e4970a30",
+      "name": "completeOrderSubmmit",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "oawWWN96sEsY8v9R",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "//寫一個人工比對界面的html\nvar items=$('If').first().json.items;\n\ntext=''\nfor(var item of items){\n  if(item['match_score']>0.6 || item['quantity']=='Null'){\n      text+=`\n    <br><br>\n    <div>原始輸入:${item['original_input']},  比對結果:${item['match_name']},  數量:${item['quantity']}</div><br>\n    <label for=\"decision[${item['item_id']}]\">審核結果：</label>\n    <select id=\"decision[${item['item_id']}]\" name=\"decision[${item['item_id']}]\" required>\n      <option value=\"approve\">正確</option>\n      <option value=\"reject\">錯誤</option>\n    </select><br>\n    <label for=\"match_name[${item['item_id']}]\">正確產品名稱</label>\n    <input type=\"text\" id=\"match_name[${item['item_id']}]\" name=\"match_name[${item['item_id']}]\"><br><br>\n    <label for=\"quantity[${item['item_id']}]\">正確數量</label>\n    <input type=\"text\" id=\"quantity[${item['item_id']}]\" name=\"quantity[${item['item_id']}]\"><br><br>\n`\n  }\n\n}\nreturn {'text':text}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        1100
+      ],
+      "id": "d1f3cf94-694d-4568-9ea3-a1d53e000bfe",
+      "name": "htmlFormGenerate"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "test",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        1460
+      ],
+      "id": "24170e6f-fa46-4211-bde9-8abcf978445f",
+      "name": "getHumanCheck",
+      "webhookId": "2cf1b6de-20e8-4093-ad5f-c641a0a68ed6"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1aaouNFhHcrIaH2Yn26MM_C9eOPGauDeuFAUMLIYL6qA",
+          "mode": "list",
+          "cachedResultName": "產品清單",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aaouNFhHcrIaH2Yn26MM_C9eOPGauDeuFAUMLIYL6qA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1323375828,
+          "mode": "list",
+          "cachedResultName": "COPR222025033000000320250330000",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aaouNFhHcrIaH2Yn26MM_C9eOPGauDeuFAUMLIYL6qA/edit#gid=1323375828"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        320,
+        1460
+      ],
+      "id": "96a3c684-b496-4fc1-befc-768b8f2391fe",
+      "name": "getOrderInformation1",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "a2tvn0xsKLduVjRO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        -320
+      ],
+      "id": "3daeb4e4-d146-4ea0-b541-494f6d561ce1",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\ntext=''\nfor (const item of $input.all()) {\n  text+=item.json.data.responses[0].fullTextAnnotation.text\n}\nreturn {'text':text}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        -320
+      ],
+      "id": "f980a662-a579-46c1-ade7-f9b0603d5ced",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const hanzi = require(\"hanzi\");\nconst Fuse = require(\"fuse.js\");\n\nfunction decomposedString(str){\n    ret='';\n    for (let i = 0; i < str.length; i++) {\n        if (hanzi.ifComponentExists(str[i])) {\n            hanziDecompose=hanzi.decompose(str[i],3);\n            hanziDecompose['components'].forEach((element) => ret+=element);\n            \n        } else {\n            ret+=str[i];\n        }\n    }\n    //console.log('ret: ', ret);\n    final_ret=ret.split('').join(' ');\n    //console.log(final_ret);\n    return final_ret;\n}\n\nfunction main(){\n  hanzi.start();\n  const raw_data=$(\"seperate name1\").all()\n  var data = raw_data.map(item => item.json);\n  \n  data.forEach((element) => {element['decomposed']=decomposedString(element['品名']);});\n  const options = {\n      keys: ['decomposed'], // 指定要搜索的键]\n      threshold: 1, // 阈值控制匹配的敏感度\n      shouldSort: true, // 是否对结果进行排序\n      location: 0, // 匹配的位置，0 表示开头匹配\n      distance: 100, // 搜索的最大距离\n      tokenize: true,\n      includeScore:true, // 是否包含匹配的分数\n      \n  };\n  var items=[]\n  var search_items=$input.first().json\n  const fuse = new Fuse(data, options);\n  for (const key in search_items) {\n      var item=search_items[key];\n      if(item['decision']=='approve') continue;\n      \n      const result = fuse.search(decomposedString(item['match_name']));\n      let ret={};\n      ret['product_id']=result[0]['item']['品號']\n      ret['match_name']=result[0]['item']['originName']\n      ret['quantity']=item['quantity'];\n      ret['match_score']=result[0]['score'];\n    \n      ret['origname']=item['match_name']\n      ret['item_id']=item['item_id'];\n      items.push(ret);\n  }\n  let finalret={};\n  finalret['items']=items;\n  return finalret;\n}\n\nreturn main();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        1460
+      ],
+      "id": "8d35b9ec-2bda-469d-8603-0def4fb13552",
+      "name": "fuzzyMatching1",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "//把gmail人工比對表單中的資料整理\nconst items=$('getHumanCheck').first().json.body;\nvar ret={}\nfor (const [key, value] of Object.entries(items)) {\n  if(key=='mail' || key=='id' || key=='iGiveUp') continue;\n  const names=key.match(/^([a-zA-Z_]+)\\[(\\d+)\\]$/);\n  if(!ret[names[2]]){\n    ret[names[2]]={}\n    ret[names[2]]['item_id']=names[2];\n  }\n  ret[names[2]][names[1]]=value\n}\nreturn ret"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        1460
+      ],
+      "id": "a2078ddf-74c7-4d0b-98c7-1e4053b49255",
+      "name": "informationOrganize"
+    },
+    {
+      "parameters": {
+        "jsCode": "function splitOutsideParentheses(s) {\n  const result = [];\n  let current = '';\n  let depth = 0;\n  for (const char of s) {\n    if (char === '(') {\n      depth++;\n      current += char;\n    } else if (char === ')') {\n      depth--;\n      current += char;\n    } else if ((char === '/' || char === '\\\\') && depth === 0) {\n      if (current !== '') {\n        result.push(current);\n        current = '';\n      }\n    } else {\n      current += char;\n    }\n  }\n  if (current !== '') {\n    result.push(current);\n  }\n  return result;\n}\n\nvar datas = $(\"getOrderInformation1\").all().map(item => item.json);\nconst newItems = [];\n\nfor (const data of datas) {\n  const originName = data[\"品名\"];\n  const names = splitOutsideParentheses(originName);\n  newItems.push({\n    json: {\n      品號:   data[\"品號\"],\n      品名:   originName,\n      單位:   data[\"單位\"],\n      幣別:   data[\"幣別\"],\n      origname: originName,\n    }\n  });\n  if (names.length === 1) {\n    \n  } else {\n    normalname=''\n    for (const name of names) {\n      newItems.push({\n        json: {\n          品號:   data[\"品號\"],\n          品名:   name,\n          單位:   data[\"單位\"],\n          幣別:   data[\"幣別\"],\n          origname: originName,\n        }\n      });\n      normalname+=name\n    }\n    newItems.push({\n      json: {\n        品號:   data[\"品號\"],\n        品名:   normalname,\n        單位:   data[\"單位\"],\n        幣別:   data[\"幣別\"],\n        origname: originName,\n      }\n    });\n  }\n}\n\nreturn newItems;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        1460
+      ],
+      "id": "e2a9d2a1-998a-41a3-857c-d5da315d3dd9",
+      "name": "seperate name1"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.body.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        320,
+        1640
+      ],
+      "id": "0088c630-d8c5-4c95-a854-69b9a0a6035e",
+      "name": "Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "oawWWN96sEsY8v9R",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        500,
+        1640
+      ],
+      "id": "3e4b8693-1f03-4ee6-970b-1a0fca53baf0",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        1040,
+        1460
+      ],
+      "id": "d660750f-fbcf-4bf2-9184-dddecdaff5a1",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "//把就的和新的資料整合\nconst checkItems=$('fuzzyMatching1').first().json.items;\nvar uncheckItems=$('Extract from File1').first().json.data[0].items\nfor(checkItem of checkItems){\n  var itemId=parseInt(checkItem['item_id'], 10);\n  uncheckItems[itemId]['product_id']=checkItem['product_id']\n  uncheckItems[itemId]['match_name']=checkItem['match_name']\n  uncheckItems[itemId]['quantity']=checkItem['quantity']\n  uncheckItems[itemId]['match_score']=checkItem['match_score']\n}\nvar ret={}\nret['customer_name']=$('Extract from File1').first().json.data[0].customer_name\nret['customer_mail']=$('Extract from File1').first().json.data[0].customer_mail\nret['order_date']=$('Extract from File1').first().json.data[0].order_date\nret['status']='complete'\nret['items']=uncheckItems\nreturn ret;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        1460
+      ],
+      "id": "3b0f711c-2bd6-48f4-940b-e8c59377b05d",
+      "name": "updateData"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        1680
+      ],
+      "id": "ff9d9c24-b883-4de7-b35c-a8aba7c7c4ac",
+      "name": "Convert to File1"
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "=data",
+        "name": "={{ $('updateData').item.json.customer_mail }}.json",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1c-mAfXpFmhYxh6BRb66cB_6gHecuzZMs",
+          "mode": "list",
+          "cachedResultName": "整理後的訂單",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1c-mAfXpFmhYxh6BRb66cB_6gHecuzZMs"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        940,
+        1680
+      ],
+      "id": "53d7f4aa-1e68-4dda-85bc-0c9411982215",
+      "name": "Google Drive1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "oawWWN96sEsY8v9R",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q",
+          "mode": "list",
+          "cachedResultName": "訂單 (回覆)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1215184540,
+          "mode": "list",
+          "cachedResultName": "表單回應 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q/edit#gid=1215184540"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "=",
+            "status": "complete",
+            "時間戳記": "={{ $('updateData').item.json.order_date }}"
+          },
+          "matchingColumns": [
+            "時間戳記"
+          ],
+          "schema": [
+            {
+              "id": "時間戳記",
+              "displayName": "時間戳記",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "電子郵件地址",
+              "displayName": "電子郵件地址",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "名字",
+              "displayName": "名字",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "訂單",
+              "displayName": "訂單",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        1680
+      ],
+      "id": "f76ef468-2f73-485e-a45c-a77a03e5c1ea",
+      "name": "updateStatus1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "a2tvn0xsKLduVjRO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "object",
+        "operation": "create",
+        "bucketName": "raworder",
+        "objectName": "={{ $json.mail }}.pdf",
+        "createData": {},
+        "createQuery": {},
+        "encryptionHeaders": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.googleCloudStorage",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        -320
+      ],
+      "id": "33e589d4-4279-47db-87de-d955aaffb7fa",
+      "name": "storeFileToGCS",
+      "credentials": {
+        "googleCloudStorageOAuth2Api": {
+          "id": "zxzlPDM93Auk1OWW",
+          "name": "Google Cloud Storage account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://vision.googleapis.com/v1/files:asyncBatchAnnotate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-user-project",
+              "value": "=sacred-veld-457405-a3"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"requests\":[\n    {\n      \"inputConfig\": {\n        \"gcsSource\": {\n          \"uri\": \"gs://{{ $json.bucket }}/{{ $('getFiileFromDrive').item.json.mail }}.pdf\"\n        },\n        \"mimeType\": \"application/pdf\"\n      },\n      \"features\": [\n        {\n          \"type\": \"DOCUMENT_TEXT_DETECTION\"\n        }\n      ],\n      \"outputConfig\": {\n        \"gcsDestination\": {\n          \"uri\": \"gs://visionapi_output/\"\n        },\n        \"batchSize\": 1\n      }\n    }\n  ]\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        -320
+      ],
+      "id": "d85e023a-7333-4119-865d-2bdf806df47a",
+      "name": "googleVisionApi",
+      "retryOnFail": true,
+      "credentials": {
+        "oAuth2Api": {
+          "id": "kLAUeaDLu5Cm7L2r",
+          "name": "google vision api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "object",
+        "bucketName": "visionapi_output",
+        "projection": "full",
+        "returnAll": true,
+        "listFilters": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.googleCloudStorage",
+      "typeVersion": 1,
+      "position": [
+        820,
+        -160
+      ],
+      "id": "c882cc71-ac86-4b5e-aee9-4c7af54156ad",
+      "name": "getListofObjectsOnGCS",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCloudStorageOAuth2Api": {
+          "id": "zxzlPDM93Auk1OWW",
+          "name": "Google Cloud Storage account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "object",
+        "operation": "get",
+        "bucketName": "visionapi_output",
+        "objectName": "={{ $json.name }}",
+        "alt": "media",
+        "getParameters": {},
+        "encryptionHeaders": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.googleCloudStorage",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -320
+      ],
+      "id": "7beb42ef-761d-48d4-af35-fb0ac2dec86b",
+      "name": "getObjectFromGCS",
+      "credentials": {
+        "googleCloudStorageOAuth2Api": {
+          "id": "zxzlPDM93Auk1OWW",
+          "name": "Google Cloud Storage account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q",
+          "mode": "list",
+          "cachedResultName": "訂單 (回覆)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1215184540,
+          "mode": "list",
+          "cachedResultName": "表單回應 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q/edit#gid=1215184540"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "complete",
+            "row_number": "=",
+            "時間戳記": "={{ $('fuzzyMatching').item.json.order_date }}"
+          },
+          "matchingColumns": [
+            "時間戳記"
+          ],
+          "schema": [
+            {
+              "id": "時間戳記",
+              "displayName": "時間戳記",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "電子郵件地址",
+              "displayName": "電子郵件地址",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "名字",
+              "displayName": "名字",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "訂單",
+              "displayName": "訂單",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        500,
+        640
+      ],
+      "id": "546eb734-3c72-4b9f-b9cc-4476348f7017",
+      "name": "updateStatus2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "a2tvn0xsKLduVjRO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "wangtsunglin28@gmail.com",
+        "subject": "顧客訂單需要人工辨識",
+        "message": "=<!DOCTYPE html>\n<html lang=\"zh-Hant\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>人工審核表單</title>\n</head>\n<body>\n  <h2>人工審核作業</h2>\n  <form method=\"POST\" action=\"http://localhost:5678/webhook-test/test\">\n    <input type=\"hidden\" name=\"mail\" value=\"{{ $('If').item.json.customer_mail }}\">\n  <input type=\"hidden\" name=\"id\" value=\"{{ $('pendingOrderSubmmit').item.json.id }}\">\n    <label for=\"iGiveUp\">是否要聯絡訂單主人(如果他寫的完全看不懂)：</label>\n    <select id=\"iGiveUp\" name=\"iGiveup\" required>\n      <option value=\"no\">不需要</option>\n      <option value=\"yes\">需要</option>\n    </select><br><br>\n    {{ $json.text }}\n    <button type=\"submit\">送出審核</button>\n  </form>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        960,
+        1100
+      ],
+      "id": "d06d384a-8add-4b12-a19e-7fd47f1f07b4",
+      "name": "sendForHumanCheck",
+      "webhookId": "3467921a-afb3-4037-971e-8403264b832e",
+      "executeOnce": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2v8b3v2QxY1zY4yX",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1000,
+        240
+      ],
+      "id": "1ddf4c73-9a5b-4e41-9f45-c8fcefe9dd9a",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q",
+          "mode": "list",
+          "cachedResultName": "訂單 (回覆)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1215184540,
+          "mode": "list",
+          "cachedResultName": "表單回應 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q/edit#gid=1215184540"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -780,
+        240
+      ],
+      "id": "5a2e170d-d392-4b01-b911-cf5ec6967d17",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "a2tvn0xsKLduVjRO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "99b24483-9a02-4aa6-98d9-7d3cc9de2874",
+              "leftValue": "={{ $input.item.binary.data.mimeType }}",
+              "rightValue": "pdf",
+              "operator": {
+                "type": "string",
+                "operation": "endsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        240
+      ],
+      "id": "8cf1d613-1fbd-4aff-b830-1dee7a5d9eac",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        340,
+        260
+      ],
+      "id": "da6e0370-11dd-48a4-be12-501abe943cfd",
+      "name": "Extract from File2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://vision.googleapis.com/v1/images:annotate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-user-project",
+              "value": "=sacred-veld-457405-a3"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"requests\": [\n    {\n      \"image\": {\n        \"content\": \"{{ $json.data }}\"\n      },\n      \"features\": [\n        {\n          \"type\": \"TEXT_DETECTION\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        580,
+        260
+      ],
+      "id": "fa6b1887-e037-43c8-bc48-5943968e4590",
+      "name": "googleVisionApi1",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "kLAUeaDLu5Cm7L2r",
+          "name": "google vision api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\"text\":$input.first().json.responses[0].textAnnotations[0].description};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        260
+      ],
+      "id": "1a7c8719-1603-4953-96a2-8b1ebb1e23fb",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c5b66831-51e5-4168-a185-c304c4178ecd",
+              "leftValue": "={{ $json.body.iGiveup }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        20,
+        1460
+      ],
+      "id": "fd020fb3-06fa-41a9-8d12-f87d4862cfb4",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "resource": "object",
+        "operation": "delete",
+        "bucketName": "raworder",
+        "objectName": "={{ $('getFiileFromDrive').item.json.mail }}.pdf",
+        "getParameters": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.googleCloudStorage",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        -740
+      ],
+      "id": "bb0d6224-ddc6-4616-8611-5d01c8fa1c97",
+      "name": "Google Cloud Storage1",
+      "executeOnce": true,
+      "credentials": {
+        "googleCloudStorageOAuth2Api": {
+          "id": "zxzlPDM93Auk1OWW",
+          "name": "Google Cloud Storage account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        1140
+      ],
+      "id": "6476b3be-7d45-4810-910a-cc37f9bbd791",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "sendTo": "wangtsunglin28@gmail.com",
+        "subject": "n8n出事",
+        "emailType": "text",
+        "message": "快來修理",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -820,
+        1140
+      ],
+      "id": "eb79fde9-6c01-4576-86a2-3918f619d720",
+      "name": "Gmail1",
+      "webhookId": "d946ecba-a49e-4333-9420-3c88386d2834",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2v8b3v2QxY1zY4yX",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "object",
+        "operation": "delete",
+        "bucketName": "visionapi_output",
+        "objectName": "={{ $('getListofObjectsOnGCS').item.json.name }}",
+        "getParameters": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.googleCloudStorage",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        -520
+      ],
+      "id": "a4b30c51-c940-4fe5-b01f-3e79fed2ed74",
+      "name": "Google Cloud Storage",
+      "credentials": {
+        "googleCloudStorageOAuth2Api": {
+          "id": "zxzlPDM93Auk1OWW",
+          "name": "Google Cloud Storage account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "80ad93ec-5276-4674-a60c-3d26a018e1ab",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        980,
+        -160
+      ],
+      "id": "6656c5d1-a5d5-4ec6-9866-73af2b5d18e6",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        -140
+      ],
+      "id": "7b72a491-9340-4929-b5e5-a778ec6f3be0",
+      "name": "Wait",
+      "webhookId": "1ec6f26f-5f38-4cab-840e-606d2f5f44d0"
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {
+          "reset": true
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        640,
+        -260
+      ],
+      "id": "3d10f7ea-b381-476c-9188-6be26cba055d",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "content": "## step2. PDF文字辨識\n因為google ocr對pdf只接受用gcs，所以要先把pdf存在gcs，再把orm的結果從gcs抓下來\n因為上傳gcs會有延遲，所以需要等待",
+        "height": 660,
+        "width": 1620,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        60,
+        -580
+      ],
+      "typeVersion": 1,
+      "id": "824849a0-a191-4a4c-9d57-eb5f644bc859",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        -320
+      ],
+      "id": "0ede9b29-7cd2-477d-83b8-de62f29e13d2",
+      "name": "Wait1",
+      "webhookId": "f46f9381-1ff7-482a-b81a-987b13d00a62"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        -300
+      ],
+      "id": "fe12bf21-ff9a-4a96-9d45-5fd6ad261dce",
+      "name": "Wait2",
+      "webhookId": "5102d69d-7560-4f63-8d20-37fadfc673ec"
+    },
+    {
+      "parameters": {
+        "content": "## 當人工比對結果出來就會執行這裡\n先看是否需要叫客人重填訂單，不用的話把人工比對的資料進行fuzzy matching然後和舊資料合併存在drive",
+        "height": 620,
+        "width": 1700
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -260,
+        1300
+      ],
+      "typeVersion": 1,
+      "id": "fb0dbe60-8cce-4a18-990d-e34ab425fdec",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.mail }}",
+        "subject": "訂單",
+        "emailType": "text",
+        "message": "請你再重新交一份訂單",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        560,
+        1320
+      ],
+      "id": "2627a549-fc1a-4b05-a500-6348f1f9340d",
+      "name": "cantReadable",
+      "webhookId": "1a009cc6-bf3e-4d1b-9689-20aefff26e12",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2v8b3v2QxY1zY4yX",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## readme\nform:https://docs.google.com/forms/d/e/1FAIpQLScvgzOLMruINNHkp_k77yeFhiXpfansKbLrgcFBPurBr6Qndw/viewform\nsheet:https://docs.google.com/spreadsheets/d/1WFoFFBcd0nEC_mEU0rh_z9UEu0FIHF_n7avWKiTd_1Q/edit?gid=1215184540#gid=1215184540\ndrive:https://drive.google.com/drive/folders/1IK_W0AtOVZN_CvcnetBqQyMG9bLOetDUamTDfAl5BiHUCoWUAEYtUE4ifSHwpX72gOC3L0sA?usp=sharing\n填寫這個表單後google內部會把回答連接到sheet，然後n8n就會開始做事\n1先把檔案找出來\n2根據檔案類型去用不同的方法做ocr(ocr用google vision api，另外兩個ocr中文處理能力很爛，llm沒事過，目前只有處理pdf和img)\n3把得到的文字交給llm轉成格式化的資料\n4fuzzymatching\n5如果沒問題就存在drive，否則發一封信給工人進行人工比對\n\n有用到的外部的api/module：\napi:\ngoogle sheet,google drive,google cloud vision api,gcp,openrouter\nmodule:（拿來做fuzzymatching)\nfuse.js,一個fuzzymatching工具\nhanzi,用來把漢字拆解\n\n如何部署：\n在本地端下載docker，把要用的npm丟到dockerfile，然後建立一個n8n container就可以執行了\n如何測試：\n設定成active然test workflow，然後填寫表單\n",
+        "height": 540,
+        "width": 760,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1100,
+        -540
+      ],
+      "typeVersion": 1,
+      "id": "41db1490-3967-4735-94f1-3fdec8558db6",
+      "name": "Sticky Note7"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "extracFileID": {
+      "main": [
+        [
+          {
+            "node": "getFiileFromDrive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getFiileFromDrive": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "toJson",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Item List Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "toJson": {
+      "main": [
+        [
+          {
+            "node": "getOrderInformation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fuzzyMatching": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seperate name": {
+      "main": [
+        [
+          {
+            "node": "fuzzyMatching",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convert to File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File2": {
+      "main": [
+        [
+          {
+            "node": "pendingOrderSubmmit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getOrderInformation": {
+      "main": [
+        [
+          {
+            "node": "seperate name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "completeOrderSubmmit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "htmlFormGenerate": {
+      "main": [
+        [
+          {
+            "node": "sendForHumanCheck",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getHumanCheck": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getOrderInformation1": {
+      "main": [
+        [
+          {
+            "node": "seperate name1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pendingOrderSubmmit": {
+      "main": [
+        [
+          {
+            "node": "updateStatus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "updateStatus": {
+      "main": [
+        [
+          {
+            "node": "htmlFormGenerate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "informationOrganize": {
+      "main": [
+        [
+          {
+            "node": "fuzzyMatching1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seperate name1": {
+      "main": [
+        [
+          {
+            "node": "informationOrganize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fuzzyMatching1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "updateData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "updateData": {
+      "main": [
+        [
+          {
+            "node": "Convert to File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File1": {
+      "main": [
+        [
+          {
+            "node": "Google Drive1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive1": {
+      "main": [
+        [
+          {
+            "node": "updateStatus1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "storeFileToGCS": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "googleVisionApi": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getListofObjectsOnGCS": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getObjectFromGCS": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Cloud Storage",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Cloud Storage1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "completeOrderSubmmit": {
+      "main": [
+        [
+          {
+            "node": "updateStatus2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "extracFileID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "storeFileToGCS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File2": {
+      "main": [
+        [
+          {
+            "node": "googleVisionApi1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "googleVisionApi1": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "cantReadable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "getOrderInformation1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        []
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "getObjectFromGCS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "getListofObjectsOnGCS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "googleVisionApi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Cloud Storage1": {
+      "main": [
+        []
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cantReadable": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dc60f1d7-44f6-49d7-88b9-493a9518d5ff",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bbebd559339f55cde9ab1af31e16c054deccd585e1c2a87c0dde8a567b77e12a"
+  },
+  "id": "UVZQb7sH3ZJtPO6m",
+  "tags": []
+}
