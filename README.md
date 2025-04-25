@@ -19,13 +19,12 @@
    - 登入後建立新的 Workflow，並匯入 `My_workflow.json`
 
 3. **設定 Credentials**
+   - 在google cloud 中新增專案，新增oauth2用戶端和測試使用者
+   - 開啟google drive, sheet, gmail, cloud storage, cloud vision的api
+   - 在openrouter中新增api kay
+   - 在n8n把這些api都設定好
 
-   - Google Form
-   - Google Drive
-   - Google Cloud Storage
-   - （依照需求新增或調整）
 
 4. **啟用並測試**
 
-   - 確保 Google Form、Drive 與 Cloud Storage 權限設定正確
-   - 在 n8n Workflow 中執行並驗證流程運作正常
+   - 把每個 api 的路徑都根據自己的設定修改
